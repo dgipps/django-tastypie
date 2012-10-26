@@ -9,6 +9,7 @@ from django.core.cache import cache
 from django.core.exceptions import FieldError, MultipleObjectsReturned
 from django.core import mail
 from django.core.urlresolvers import reverse
+from django.db.models import Q
 from django import forms
 from django.http import HttpRequest, QueryDict, Http404
 from django.test import TestCase
@@ -3131,35 +3132,28 @@ class ModelResourceTestCase(TestCase):
         self.assertEqual(response.status_code, 202)
 
     def test_union_auth_limits(self):
-        # UnionAuth gets notes that belong to janedoe OR have is_active=True
-        expected_PKs = [1, 2, 3, 4, 6]
         resource = UnionAuthNoteResource()
         request = HttpRequest()
-        objects = resource.apply_authorization_limits(request, resource.get_object_list(request))
-        expected_objects = objects.filter(pk__in=expected_PKs)
-        self.assertEqual(len(objects), len(expected_PKs))
-        self.assertEqual(len(objects), len(expected_objects))
+        expected_PKs = Note.objects.filter(Q(author__username='janedoe') | Q(is_active=True)).values_list('id', flat=True)
+        result_PKs = resource.apply_authorization_limits(request, resource.get_object_list(request)).values_list('id', flat=True)
+        self.assertEqual(set(expected_PKs), set(result_PKs))
 
 
     def test_intersection_auth_limits(self):
         # IntersectionAuth gets notes that belong to janedoe AND have is_active=True
-        expected_PKs = [4, 6]
         resource = IntersectionAuthNoteResource()
         request = HttpRequest()
-        objects = resource.apply_authorization_limits(request, resource.get_object_list(request))
-        expected_objects = objects.filter(pk__in=expected_PKs)
-        self.assertEqual(len(objects), len(expected_PKs))
-        self.assertEqual(len(objects), len(expected_objects))
+        expected_PKs = Note.objects.filter(Q(author__username='janedoe') & Q(is_active=True)).values_list('id', flat=True)
+        result_PKs = resource.apply_authorization_limits(request, resource.get_object_list(request)).values_list('id', flat=True)
+        self.assertEqual(set(expected_PKs), set(result_PKs))
 
     def test_complex_auth_limits(self):
         # ComplexAuth gets notes that ((belong to johndoe) OR (belong to janedoe)) AND have is_active=True
-        expected_PKs = [1, 2, 4, 6]
         resource = ComplexAuthNoteResource()
         request = HttpRequest()
-        objects = resource.apply_authorization_limits(request, resource.get_object_list(request))
-        expected_objects = objects.filter(pk__in=expected_PKs)
-        self.assertEqual(len(objects), len(expected_PKs))
-        self.assertEqual(len(objects), len(expected_objects))
+        expected_PKs = Note.objects.filter(Q(author__username__in=['janedoe', 'johndoe']) & Q(is_active=True)).values_list('id', flat=True)
+        result_PKs = resource.apply_authorization_limits(request, resource.get_object_list(request)).values_list('id', flat=True)
+        self.assertEqual(set(expected_PKs), set(result_PKs))
 
 class BasicAuthResourceTestCase(TestCase):
     fixtures = ['note_testdata.json']
