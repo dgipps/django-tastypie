@@ -3132,7 +3132,6 @@ class ModelResourceTestCase(TestCase):
 
     def test_union_auth_limits(self):
         # UnionAuth gets notes that belong to janedoe OR have is_active=True
-        # expected PKs 1, 2, 3, 4, 6
         expected_PKs = [1, 2, 3, 4, 6]
         resource = UnionAuthNoteResource()
         request = HttpRequest()
