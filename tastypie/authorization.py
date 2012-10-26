@@ -21,9 +21,6 @@ class Authorization(object):
         """
         return True
 
-    def apply_limits(self, request, object_list):
-        return object_list
-
     def __and__(a,b):
         return IntersectionAuthorization(a,b)
 
@@ -104,8 +101,12 @@ class IntersectionAuthorization(Authorization):
         return True
 
     def apply_limits(self, request, object_list):
-        result = self.backends[0].apply_limits(request, object_list)
-        for backend in self.backends[1:]:
+        backends = [b for b in self.backends if hasattr(b, 'apply_limits')]
+        if len(backends) == 0:
+            return object_list
+
+        result = backends[0].apply_limits(request, object_list)
+        for backend in backends[1:]:
             result = result & backend.apply_limits(request, backend.apply_limits(request, object_list))
         return result
 
@@ -126,7 +127,11 @@ class UnionAuthorization(Authorization):
         return False
 
     def apply_limits(self, request, object_list):
-        result = self.backends[0].apply_limits(request, object_list)
-        for backend in self.backends[1:]:
+        backends = [b for b in self.backends if hasattr(b, 'apply_limits')]
+        if len(backends) == 0:
+            return object_list
+
+        result = backends[0].apply_limits(request, object_list)
+        for backend in backends[1:]:
             result = result | backend.apply_limits(request, object_list)
         return result
