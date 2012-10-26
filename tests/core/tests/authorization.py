@@ -67,7 +67,6 @@ class AuthorizationTestCase(TestCase):
             request.method = method
             self.assertFalse(ReadOnlyNoteResource()._meta.authorization.is_authorized(request))
 
-class UnionAuthorizationTestCase(TestCase):
     def test_union_authorization(self):
         request = HttpRequest()
 
@@ -77,7 +76,6 @@ class UnionAuthorizationTestCase(TestCase):
         self.assertTrue((FalseAuthorization() | TrueAuthorization()).is_authorized(request))
         self.assertFalse((FalseAuthorization() | FalseAuthorization()).is_authorized(request))
 
-class IntersectionAuthorizationTestCase(TestCase):
     def test_intersection_authorization(self):
         request = HttpRequest()
 
@@ -87,7 +85,6 @@ class IntersectionAuthorizationTestCase(TestCase):
         self.assertFalse((FalseAuthorization() & TrueAuthorization()).is_authorized(request))
         self.assertFalse((FalseAuthorization() & FalseAuthorization()).is_authorized(request))
 
-class ComplexAuthorizationTestCase(TestCase):
     def test_complex_authorization(self):
         request = HttpRequest()
         # test the result of chaining combinations
