@@ -67,7 +67,8 @@ class AuthorizationTestCase(TestCase):
             request.method = method
             self.assertFalse(ReadOnlyNoteResource()._meta.authorization.is_authorized(request))
 
-    def test_authorization_operators(self):
+class UnionAuthorizationTestCase(TestCase):
+    def test_union_authorization(self):
         request = HttpRequest()
 
         # test the __or__ operator by exhausting the truth table
@@ -76,12 +77,19 @@ class AuthorizationTestCase(TestCase):
         self.assertTrue((FalseAuthorization() | TrueAuthorization()).is_authorized(request))
         self.assertFalse((FalseAuthorization() | FalseAuthorization()).is_authorized(request))
 
+class IntersectionAuthorizationTestCase(TestCase):
+    def test_intersection_authorization(self):
+        request = HttpRequest()
+
         # test the __and__ operator by exhausting the truth table
         self.assertTrue((TrueAuthorization() & TrueAuthorization()).is_authorized(request))
         self.assertFalse((TrueAuthorization() & FalseAuthorization()).is_authorized(request))
         self.assertFalse((FalseAuthorization() & TrueAuthorization()).is_authorized(request))
         self.assertFalse((FalseAuthorization() & FalseAuthorization()).is_authorized(request))
 
+class ComplexAuthorizationTestCase(TestCase):
+    def test_complex_authorization(self):
+        request = HttpRequest()
         # test the result of chaining combinations
         # (T | F) & T = T
         self.assertTrue(((TrueAuthorization() | FalseAuthorization()) & TrueAuthorization()).is_authorized(request))
