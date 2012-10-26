@@ -925,7 +925,10 @@ class Resource(object):
         Allows the ``Authorization`` class to further limit the object list.
         Also a hook to customize per ``Resource``.
         """
-        return self._meta.authorization.apply_limits(request, object_list)
+        if hasattr(self._meta.authorization, 'apply_limits'):
+            object_list = self._meta.authorization.apply_limits(request, object_list)
+
+        return object_list
 
     def can_create(self):
         """
