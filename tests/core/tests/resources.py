@@ -1051,6 +1051,35 @@ class PerObjectNoteResource(NoteResource):
         return new_object_list
 # End per object authorization bits.
 
+class UsernameAuthorization(Authorization):
+    def __init__(self, username, **kwargs):
+        super(Authorization, self).__init__(**kwargs)
+        self.username = username
+
+    def apply_limits(self, request, object_list):
+        return object_list.filter(author__username=self.username)
+
+class ActiveAuthorization(Authorization):
+    def apply_limits(self, request, object_list):
+        return object_list.filter(is_active=True)
+
+class UnionAuthNoteResource(NoteResource):
+    class Meta:
+        resource_name = 'unionnotes'
+        queryset = Note.objects.all()
+        authorization = UsernameAuthorization('janedoe') | ActiveAuthorization()
+
+class IntersectionAuthNoteResource(NoteResource):
+    class Meta:
+        resource_name = 'intersectnotes'
+        queryset = Note.objects.all()
+        authorization = UsernameAuthorization('janedoe') & ActiveAuthorization()
+
+class ComplexAuthNoteResource(NoteResource):
+    class Meta:
+        resource_name = 'complexnotes'
+        queryset = Note.objects.all()
+        authorization = (UsernameAuthorization('johndoe') | UsernameAuthorization('janedoe')) & ActiveAuthorization()
 
 class CounterResource(ModelResource):
     count = fields.IntegerField('count', default=0, null=True)
@@ -3101,6 +3130,37 @@ class ModelResourceTestCase(TestCase):
         response = resource.patch_list(request)
         self.assertEqual(response.status_code, 202)
 
+    def test_union_auth_limits(self):
+        # UnionAuth gets notes that belong to janedoe OR have is_active=True
+        # expected PKs 1, 2, 3, 4, 6
+        expected_PKs = [1, 2, 3, 4, 6]
+        resource = UnionAuthNoteResource()
+        request = HttpRequest()
+        objects = resource.apply_authorization_limits(request, resource.get_object_list(request))
+        expected_objects = objects.filter(pk__in=expected_PKs)
+        self.assertEqual(len(objects), len(expected_PKs))
+        self.assertEqual(len(objects), len(expected_objects))
+
+
+    def test_intersection_auth_limits(self):
+        # IntersectionAuth gets notes that belong to janedoe AND have is_active=True
+        expected_PKs = [4, 6]
+        resource = IntersectionAuthNoteResource()
+        request = HttpRequest()
+        objects = resource.apply_authorization_limits(request, resource.get_object_list(request))
+        expected_objects = objects.filter(pk__in=expected_PKs)
+        self.assertEqual(len(objects), len(expected_PKs))
+        self.assertEqual(len(objects), len(expected_objects))
+
+    def test_complex_auth_limits(self):
+        # ComplexAuth gets notes that ((belong to johndoe) OR (belong to janedoe)) AND have is_active=True
+        expected_PKs = [1, 2, 4, 6]
+        resource = ComplexAuthNoteResource()
+        request = HttpRequest()
+        objects = resource.apply_authorization_limits(request, resource.get_object_list(request))
+        expected_objects = objects.filter(pk__in=expected_PKs)
+        self.assertEqual(len(objects), len(expected_PKs))
+        self.assertEqual(len(objects), len(expected_objects))
 
 class BasicAuthResourceTestCase(TestCase):
     fixtures = ['note_testdata.json']
