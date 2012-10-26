@@ -94,7 +94,7 @@ class ComplexAuthorizationTestCase(TestCase):
         # (T | F) & T = T
         self.assertTrue(((TrueAuthorization() | FalseAuthorization()) & TrueAuthorization()).is_authorized(request))
         # (T & F) | F = F
-        self.assertFalse(((TrueAuthorization() | FalseAuthorization()) | FalseAuthorization()).is_authorized(request))
+        self.assertFalse(((TrueAuthorization() & FalseAuthorization()) | FalseAuthorization()).is_authorized(request))
 
 class DjangoAuthorizationTestCase(TestCase):
     fixtures = ['note_testdata']
