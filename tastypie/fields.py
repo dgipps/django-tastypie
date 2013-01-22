@@ -65,6 +65,8 @@ class ApiField(object):
         self.readonly = readonly
         self.value = None
         self.unique = unique
+        self.list = True
+        self.detail = True
 
         if help_text:
             self.help_text = help_text
@@ -142,7 +144,7 @@ class ApiField(object):
         if self.readonly:
             return None
 
-        if not bundle.data.has_key(self.instance_name):
+        if not self.instance_name in bundle.data:
             if getattr(self, 'is_related', False) and not getattr(self, 'is_m2m', False):
                 # We've got an FK (or alike field) & a possible parent object.
                 # Check for it.
@@ -617,10 +619,19 @@ class ToOneField(RelatedField):
         self.fk_resource = None
 
     def dehydrate(self, bundle):
-        try:
-            foreign_obj = getattr(bundle.obj, self.attribute)
-        except ObjectDoesNotExist:
-            foreign_obj = None
+        foreign_obj = None
+
+        if isinstance(self.attribute, basestring):
+            attrs = self.attribute.split('__')
+            foreign_obj = bundle.obj
+
+            for attr in attrs:
+                try:
+                    foreign_obj = getattr(foreign_obj, attr, None)
+                except ObjectDoesNotExist:
+                    foreign_obj = None
+        elif callable(self.attribute):
+            foreign_obj = self.attribute(bundle)
 
         if not foreign_obj:
             if not self.null:
@@ -639,6 +650,7 @@ class ToOneField(RelatedField):
             return value
 
         return self.build_related_resource(value, request=bundle.request)
+
 
 class ForeignKey(ToOneField):
     """
